@@ -1,3 +1,20 @@
+export const UserRole = {
+  OWNER: 'OWNER',
+  MANAGER: 'MANAGER',
+  CASHIER: 'CASHIER',
+} as const;
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+export const BazaarNiche = {
+  MODA_FEMININA: 'Moda Feminina',
+  MODA_MASCULINA: 'Moda Masculina',
+  BRECHO_VINTAGE: 'Brechó & Vintage',
+  INFANTIL: 'Infantil & Bebê',
+  CALCADOS_ACESSORIOS: 'Calçados & Acessórios',
+  VARIEDADES: 'Variedades & Outros',
+} as const;
+export type BazaarNiche = typeof BazaarNiche[keyof typeof BazaarNiche];
+
 export const ProductCategory = {
   FEMININO: 'Feminino',
   MASCULINO: 'Masculino',
@@ -29,31 +46,50 @@ export const PaymentMethod = {
   PIX: 'PIX',
   CARTAO_CREDITO: 'Cartão de Crédito',
   CARTAO_DEBITO: 'Cartão de Débito',
-  PAGSEGURO_ONLINE: 'PagSeguro Online',
 } as const;
 export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
-
-export const PaymentStatus = {
-  PENDING: 'PENDING',
-  PAID: 'PAID',
-  REFUNDED: 'REFUNDED',
-  FAILED: 'FAILED',
-} as const;
-export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus];
 
 export interface UserProfile {
   uid: string;
   email: string;
   firstName: string;
   lastName: string;
-  displayName?: string;
-  hasActiveSubscription: boolean;
+  displayName: string;
+  photoUrl?: string;
   createdAt: number;
   updatedAt: number;
 }
 
+export interface Bazaar {
+  id: string;
+  ownerId: string;
+  name: string;
+  cnpj?: string;
+  niche: BazaarNiche | string;
+  logoUrl?: string;
+  phone?: string;
+  address?: string;
+  hasActiveSubscription: boolean;
+  subscriptionPlan?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface BazaarMember {
+  id?: string;
+  bazaarId: string;
+  userId?: string;
+  userEmail: string;
+  userName?: string;
+  role: UserRole;
+  invitedBy: string;
+  status: 'active' | 'pending';
+  createdAt: number;
+}
+
 export interface Product {
   id?: string;
+  bazaarId?: string;
   ownerId: string;
   name: string;
   category: ProductCategory | string;
@@ -83,30 +119,17 @@ export interface SaleItem {
 
 export interface Sale {
   id?: string;
+  bazaarId?: string;
   ownerId: string;
   items: SaleItem[];
   totalAmount: number;
   paymentMethod: PaymentMethod | string;
-  paymentStatus: PaymentStatus;
+  paymentStatus: string;
   transactionId?: string;
   discount?: number;
   notes?: string;
   createdAt: number;
   updatedAt: number;
-}
-
-export interface Settings {
-  ownerId?: string;
-  bazarName: string;
-  phone?: string;
-  address?: string;
-  logoUrl?: string;
-  theme: 'light';
-  pagSeguroEmail?: string;
-  pagSeguroToken?: string;
-  hasActiveSubscription?: boolean;
-  subscriptionPlan?: string;
-  updatedAt?: number;
 }
 
 export interface DashboardData {

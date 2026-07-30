@@ -2,7 +2,14 @@ import { httpsCallable } from 'firebase/functions';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { functions, storage, db } from '../firebase/config';
-import type { Product, Sale, DashboardData, ReportData, Settings } from '../types';
+import type { Product, Sale, DashboardData, ReportData, Bazaar, BazaarMember, UserProfile } from '../types';
+
+const createBazaarFn = httpsCallable(functions, 'createBazaar');
+const getUserBazaarsFn = httpsCallable(functions, 'getUserBazaars');
+const inviteMemberFn = httpsCallable(functions, 'inviteMember');
+const removeMemberFn = httpsCallable(functions, 'removeMember');
+const updateBazaarFn = httpsCallable(functions, 'updateBazaar');
+const updateProfileFn = httpsCallable(functions, 'updateProfile');
 
 const createProductFn = httpsCallable(functions, 'createProduct');
 const updateProductFn = httpsCallable(functions, 'updateProduct');
@@ -13,9 +20,38 @@ const registerSaleFn = httpsCallable(functions, 'registerSale');
 const getSaleHistoryFn = httpsCallable(functions, 'getSaleHistory');
 const getDashboardDataFn = httpsCallable(functions, 'getDashboardData');
 const getReportsDataFn = httpsCallable(functions, 'getReportsData');
-const updateSettingsFn = httpsCallable(functions, 'updateSettings');
 
 export const apiService = {
+  // Multi-Bazaar & RBAC APIs
+  async createBazaar(data: { name: string; cnpj?: string; niche: string; logoUrl?: string; phone?: string; address?: string }): Promise<Bazaar> {
+    const res = await createBazaarFn(data);
+    return res.data as Bazaar;
+  },
+
+  async getUserBazaars(): Promise<Bazaar[]> {
+    const res = await getUserBazaarsFn();
+    return res.data as Bazaar[];
+  },
+
+  async inviteMember(bazaarId: string, targetEmail: string, role: string): Promise<BazaarMember> {
+    const res = await inviteMemberFn({ bazaarId, targetEmail, role });
+    return res.data as BazaarMember;
+  },
+
+  async removeMember(bazaarId: string, targetMemberId: string): Promise<void> {
+    await removeMemberFn({ bazaarId, targetMemberId });
+  },
+
+  async updateBazaar(bazaarId: string, updates: Partial<Bazaar>): Promise<void> {
+    await updateBazaarFn({ bazaarId, updates });
+  },
+
+  async updateProfile(profileData: Partial<UserProfile>): Promise<UserProfile> {
+    const res = await updateProfileFn(profileData);
+    return res.data as UserProfile;
+  },
+
+  // Products & Sales
   async createProduct(productData: any): Promise<Product> {
     const res = await createProductFn(productData);
     return res.data as Product;
@@ -37,7 +73,7 @@ export const apiService = {
     await markProductSoldFn({ productId });
   },
 
-  async registerSale(saleRequest: { productIds: string[]; paymentMethod: string; discount?: number; notes?: string }): Promise<Sale> {
+  async registerSale(saleRequest: { bazaarId?: string; productIds: string[]; paymentMethod: string; discount?: number; notes?: string }): Promise<Sale> {
     const res = await registerSaleFn(saleRequest);
     return res.data as Sale;
   },
@@ -57,16 +93,14 @@ export const apiService = {
     return res.data as ReportData;
   },
 
-  async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-    const res = await updateSettingsFn(settings);
-    return res.data as Settings;
-  },
-
-  async uploadImage(file: File, userId: string, folder: 'products' | 'logo' = 'products'): Promise<string> {
-    const fileExt = file.name.split('.').pop();
+  async uploadImage(file: File, userId: string, folder: 'products' | 'logo' | 'avatars' = 'products'): Promise<string> {
+    const fileExt = file.name.split('.').pop() || 'png';
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
     const storageRef = ref(storage, `bazaars/${userId}/${folder}/${fileName}`);
-    await uploadBytes(storageRef, file);
+    
+    // Explicitly pass contentType so Firebase Storage Security Rules recognize image MIME types
+    const mimeType = file.type || `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
+    await uploadBytes(storageRef, file, { contentType: mimeType });
     return await getDownloadURL(storageRef);
   },
 
@@ -79,6 +113,17 @@ export const apiService = {
       });
       products.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
       callback(products);
+    });
+  },
+
+  subscribeBazaarMembers(bazaarId: string, callback: (members: BazaarMember[]) => void) {
+    const q = query(collection(db, 'bazaar_members'), where('bazaarId', '==', bazaarId));
+    return onSnapshot(q, (snapshot) => {
+      const members: BazaarMember[] = [];
+      snapshot.forEach((doc) => {
+        members.push({ id: doc.id, ...doc.data() } as BazaarMember);
+      });
+      callback(members);
     });
   },
 };

@@ -8,23 +8,29 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Bazaars collection
+    match /bazaars/{bazaarId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Bazaar members (RBAC) collection
+    match /bazaar_members/{memberId} {
+      allow read, write: if request.auth != null;
+    }
+
     // Products collection
     match /products/{productId} {
-      allow read: if request.auth != null && (resource == null || resource.data.ownerId == request.auth.uid);
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow read, write: if request.auth != null;
     }
 
     // Sales collection
     match /sales/{saleId} {
-      allow read: if request.auth != null && (resource == null || resource.data.ownerId == request.auth.uid);
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow read, write: if request.auth != null;
     }
 
-    // Settings document (keyed by ownerId or docId)
+    // Settings collection
     match /settings/{docId} {
-      allow read, write: if request.auth != null && (docId == request.auth.uid || resource == null || resource.data.ownerId == request.auth.uid);
+      allow read, write: if request.auth != null;
     }
   }
 }

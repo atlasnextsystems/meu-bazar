@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Store, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Store, ArrowRight, AlertCircle, CheckCircle2, Upload, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/api';
 
 export const RegisterPage: React.FC = () => {
   const [firstName, setFirstName] = useState('');
@@ -9,16 +10,26 @@ export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
-  // Strict email format validation regex
   const validateEmail = (emailStr: string): boolean => {
     const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return re.test(emailStr);
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +42,7 @@ export const RegisterPage: React.FC = () => {
     }
 
     if (!validateEmail(email.trim())) {
-      return setError('E-mail inválido. Por favor, insira um formato de e-mail correto (ex: nome@dominio.com).');
+      return setError('E-mail inválido. Insira um formato correto (ex: nome@dominio.com).');
     }
 
     if (password !== confirmPassword) {
@@ -45,11 +56,17 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await signup(email.trim(), password, firstName.trim(), lastName.trim());
-      setSuccessMsg('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
+      let photoUrl = '';
+      if (photoFile) {
+        // Upload temporary user avatar
+        photoUrl = await apiService.uploadImage(photoFile, `temp_${Date.now()}`, 'avatars');
+      }
+
+      await signup(email.trim(), password, firstName.trim(), lastName.trim(), photoUrl);
+      setSuccessMsg('Conta criada com sucesso! Redirecionando para a criação do seu bazar...');
       setTimeout(() => {
-        navigate('/onboarding');
-      }, 1500);
+        navigate('/create-bazar');
+      }, 1200);
     } catch (err: any) {
       setError(err.message || 'Erro ao criar conta. Tente novamente.');
     } finally {
@@ -65,7 +82,7 @@ export const RegisterPage: React.FC = () => {
             <Store className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Criar Conta no Meu Bazar</h1>
-          <p className="text-sm text-slate-500">Cadastre-se para criar e gerenciar seu bazar</p>
+          <p className="text-sm text-slate-500">Cadastre-se para gerenciar seus bazares e vendas</p>
         </div>
 
         {successMsg && (
@@ -83,6 +100,22 @@ export const RegisterPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Optional Profile Photo Uploader */}
+          <div className="flex flex-col items-center justify-center space-y-2 py-2">
+            <div className="relative w-20 h-20 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group">
+              {photoPreview ? (
+                <img src={photoPreview} alt="Foto de perfil" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-8 h-8 text-slate-400" />
+              )}
+              <label className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition">
+                <Upload className="w-5 h-5" />
+                <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+              </label>
+            </div>
+            <span className="text-xs text-slate-500 font-medium">Foto de Perfil (Opcional)</span>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -115,7 +148,7 @@ export const RegisterPage: React.FC = () => {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              E-mail (Será validado) *
+              E-mail *
             </label>
             <input
               type="email"
@@ -161,7 +194,7 @@ export const RegisterPage: React.FC = () => {
             className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm flex items-center justify-center space-x-2 shadow-md shadow-emerald-600/30 transition disabled:opacity-50"
           >
             {loading ? (
-              <span>Validando e Cadastrando...</span>
+              <span>Criando Conta...</span>
             ) : (
               <>
                 <span>Cadastrar e Continuar</span>

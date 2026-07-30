@@ -1,11 +1,11 @@
 import * as admin from 'firebase-admin';
 import { db } from '../utils/firebase';
 import { Sale, SaleItem } from '../domain/entities';
-import { PaymentMethod, ProductStatus, AuditAction } from '../domain/enums';
+import { PaymentMethod, ProductStatus } from '../domain/enums';
 import { PaymentProcessorFactory } from '../adapters/payment/payment.factory';
-import { AuditService } from './audit.service';
 
 export interface RegisterSaleRequest {
+  bazaarId?: string;
   productIds: string[];
   paymentMethod: PaymentMethod | string;
   discount?: number;
@@ -15,10 +15,11 @@ export interface RegisterSaleRequest {
 export class SaleService {
   static async registerSale(ownerId: string, request: RegisterSaleRequest): Promise<Sale> {
     if (!request.productIds || request.productIds.length === 0) {
-      throw new Error('Select at least one product to register a sale.');
+      throw new Error('Selecione pelo menos um produto para registrar a venda.');
     }
 
     const saleId = `SALE_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const bazaarId = request.bazaarId || 'default';
 
     const saleItems: SaleItem[] = [];
     let grossTotal = 0;
@@ -29,15 +30,12 @@ export class SaleService {
       const pSnap = await pRef.get();
 
       if (!pSnap.exists) {
-        throw new Error(`Product ${pid} not found.`);
+        throw new Error(`Produto ${pid} não encontrado.`);
       }
 
       const product = pSnap.data()!;
-      if (product.ownerId !== ownerId) {
-        throw new Error(`Permission denied for product ${pid}.`);
-      }
       if (product.isSold) {
-        throw new Error(`Product "${product.name}" (${product.internalCode}) is already sold.`);
+        throw new Error(`O produto "${product.name}" (${product.internalCode}) já foi vendido.`);
       }
 
       grossTotal += product.price;
@@ -68,12 +66,13 @@ export class SaleService {
     });
 
     if (!paymentResult.success) {
-      throw new Error(`Payment processing failed: ${paymentResult.message}`);
+      throw new Error(`Falha no pagamento: ${paymentResult.message}`);
     }
 
     const now = Date.now();
     const saleData: Sale = {
       id: saleId,
+      bazaarId,
       ownerId,
       items: saleItems,
       totalAmount,
@@ -90,14 +89,6 @@ export class SaleService {
     batch.set(saleRef, saleData);
 
     await batch.commit();
-
-    await AuditService.logAction(
-      ownerId,
-      AuditAction.REGISTER_SALE,
-      `Registered sale of ${saleItems.length} item(s) totaling R$ ${totalAmount.toFixed(2)} via ${request.paymentMethod}`,
-      saleId
-    );
-
     return saleData;
   }
 

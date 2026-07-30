@@ -1,3 +1,18 @@
+export enum UserRole {
+  OWNER = 'OWNER',
+  MANAGER = 'MANAGER',
+  CASHIER = 'CASHIER',
+}
+
+export enum BazaarNiche {
+  MODA_FEMININA = 'Moda Feminina',
+  MODA_MASCULINA = 'Moda Masculina',
+  BRECHO_VINTAGE = 'Brechó & Vintage',
+  INFANTIL = 'Infantil & Bebê',
+  CALCADOS_ACESSORIOS = 'Calçados & Acessórios',
+  VARIEDADES = 'Variedades & Outros',
+}
+
 export enum ProductCategory {
   FEMININO = 'Feminino',
   MASCULINO = 'Masculino',
@@ -26,7 +41,6 @@ export enum PaymentMethod {
   PIX = 'PIX',
   CARTAO_CREDITO = 'Cartão de Crédito',
   CARTAO_DEBITO = 'Cartão de Débito',
-  PAGSEGURO_ONLINE = 'PagSeguro Online',
 }
 
 export enum PaymentStatus {
@@ -39,14 +53,4 @@ export enum PaymentStatus {
 export enum EnvMode {
   DEV = 'dev',
   PROD = 'prod',
-}
-
-export enum AuditAction {
-  CREATE_PRODUCT = 'CREATE_PRODUCT',
-  UPDATE_PRODUCT = 'UPDATE_PRODUCT',
-  DELETE_PRODUCT = 'DELETE_PRODUCT',
-  RESTORE_PRODUCT = 'RESTORE_PRODUCT',
-  MARK_SOLD = 'MARK_SOLD',
-  REGISTER_SALE = 'REGISTER_SALE',
-  UPDATE_SETTINGS = 'UPDATE_SETTINGS',
 }

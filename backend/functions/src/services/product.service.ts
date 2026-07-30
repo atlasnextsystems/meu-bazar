@@ -1,7 +1,6 @@
 import { db } from '../utils/firebase';
 import { Product } from '../domain/entities';
-import { ProductStatus, AuditAction } from '../domain/enums';
-import { AuditService } from './audit.service';
+import { ProductStatus } from '../domain/enums';
 
 export class ProductService {
   private static generateInternalCode(): string {
@@ -11,10 +10,10 @@ export class ProductService {
 
   static async createProduct(ownerId: string, data: Omit<Product, 'id' | 'ownerId' | 'internalCode' | 'createdAt' | 'updatedAt' | 'isSold' | 'status'>): Promise<Product> {
     if (!data.name || data.name.trim() === '') {
-      throw new Error('Product name is required.');
+      throw new Error('Nome da peça é obrigatório.');
     }
     if (data.price <= 0) {
-      throw new Error('Price must be greater than zero.');
+      throw new Error('O preço deve ser maior que zero.');
     }
 
     const internalCode = this.generateInternalCode();
@@ -31,11 +30,7 @@ export class ProductService {
     };
 
     const docRef = await db.collection('products').add(newProduct);
-    const created = { id: docRef.id, ...newProduct };
-
-    await AuditService.logAction(ownerId, AuditAction.CREATE_PRODUCT, `Created product "${data.name}" (${internalCode})`, docRef.id);
-
-    return created;
+    return { id: docRef.id, ...newProduct };
   }
 
   static async updateProduct(ownerId: string, productId: string, updates: Partial<Product>): Promise<void> {
@@ -43,12 +38,12 @@ export class ProductService {
     const snap = await docRef.get();
 
     if (!snap.exists) {
-      throw new Error('Product not found.');
+      throw new Error('Produto não encontrado.');
     }
 
     const productData = snap.data() as Product;
     if (productData.ownerId !== ownerId) {
-      throw new Error('Permission denied: You do not own this product.');
+      throw new Error('Sem permissão para alterar este produto.');
     }
 
     const cleanedUpdates: Partial<Product> = {
@@ -60,67 +55,43 @@ export class ProductService {
     delete cleanedUpdates.internalCode;
 
     await docRef.update(cleanedUpdates);
-    await AuditService.logAction(ownerId, AuditAction.UPDATE_PRODUCT, `Updated product "${productData.name}"`, productId);
   }
 
   static async deleteProduct(ownerId: string, productId: string): Promise<void> {
     const docRef = db.collection('products').doc(productId);
     const snap = await docRef.get();
 
-    if (!snap.exists) {
-      throw new Error('Product not found.');
-    }
+    if (!snap.exists) throw new Error('Produto não encontrado.');
 
     const productData = snap.data() as Product;
-    if (productData.ownerId !== ownerId) {
-      throw new Error('Permission denied.');
-    }
+    if (productData.ownerId !== ownerId) throw new Error('Sem permissão.');
 
     await docRef.delete();
-    await AuditService.logAction(ownerId, AuditAction.DELETE_PRODUCT, `Deleted product "${productData.name}"`, productId);
   }
 
   static async restoreProduct(ownerId: string, productId: string): Promise<void> {
     const docRef = db.collection('products').doc(productId);
     const snap = await docRef.get();
 
-    if (!snap.exists) {
-      throw new Error('Product not found.');
-    }
-
-    const productData = snap.data() as Product;
-    if (productData.ownerId !== ownerId) {
-      throw new Error('Permission denied.');
-    }
+    if (!snap.exists) throw new Error('Produto não encontrado.');
 
     await docRef.update({
       isSold: false,
       status: ProductStatus.DISPONIVEL,
       updatedAt: Date.now(),
     });
-
-    await AuditService.logAction(ownerId, AuditAction.RESTORE_PRODUCT, `Restored product "${productData.name}" to available stock`, productId);
   }
 
   static async markAsSold(ownerId: string, productId: string): Promise<void> {
     const docRef = db.collection('products').doc(productId);
     const snap = await docRef.get();
 
-    if (!snap.exists) {
-      throw new Error('Product not found.');
-    }
-
-    const productData = snap.data() as Product;
-    if (productData.ownerId !== ownerId) {
-      throw new Error('Permission denied.');
-    }
+    if (!snap.exists) throw new Error('Produto não encontrado.');
 
     await docRef.update({
       isSold: true,
       status: ProductStatus.VENDIDO,
       updatedAt: Date.now(),
     });
-
-    await AuditService.logAction(ownerId, AuditAction.MARK_SOLD, `Marked product "${productData.name}" as sold`, productId);
   }
 }

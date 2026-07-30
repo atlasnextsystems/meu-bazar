@@ -7,9 +7,10 @@ import { MainLayout } from './layouts/MainLayout';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { OnboardingPage } from './pages/OnboardingPage';
+import { HomePage } from './pages/HomePage';
+import { CreateBazaarPage } from './pages/CreateBazaarPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { DashboardPage } from './pages/DashboardPage';
-import { ProductsPage } from './pages/ProductsPage';
 import { SalesPage } from './pages/SalesPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -25,7 +26,7 @@ const queryClient = new QueryClient({
 });
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading, settings } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -37,33 +38,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (!user) {
     return <Navigate to="/login" replace />;
-  }
-
-  // If user has not created/subscribed to a Bazaar yet, send them to onboarding
-  if (!settings?.hasActiveSubscription) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const OnboardingRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading, settings } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-emerald-600 font-bold text-lg">
-        Carregando...
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (settings?.hasActiveSubscription) {
-    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -81,17 +55,27 @@ export const App: React.FC = () => {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-              {/* Onboarding / Subscription Route */}
+              {/* Protected Home Hub Route (Initial landing upon login) */}
               <Route
-                path="/onboarding"
+                path="/home"
                 element={
-                  <OnboardingRoute>
-                    <OnboardingPage />
-                  </OnboardingRoute>
+                  <ProtectedRoute>
+                    <HomePage />
+                  </ProtectedRoute>
                 }
               />
 
-              {/* Protected App Routes */}
+              {/* Create Bazaar Route */}
+              <Route
+                path="/create-bazar"
+                element={
+                  <ProtectedRoute>
+                    <CreateBazaarPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Protected Bazaar Workspace Routes */}
               <Route
                 path="/"
                 element={
@@ -100,17 +84,17 @@ export const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route index element={<Navigate to="/home" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="products" element={<ProductsPage />} />
                 <Route path="pos" element={<SalesPage />} />
                 <Route path="history" element={<HistoryPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="profile" element={<ProfilePage />} />
               </Route>
 
               {/* Catch-all redirect */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>
