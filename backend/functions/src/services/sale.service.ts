@@ -4,9 +4,16 @@ import { Sale, SaleItem } from '../domain/entities';
 import { PaymentMethod, ProductStatus } from '../domain/enums';
 import { PaymentProcessorFactory } from '../adapters/payment/payment.factory';
 
+export interface SaleItemInput {
+  name: string;
+  price: number;
+  category: string;
+}
+
 export interface RegisterSaleRequest {
   bazaarId?: string;
-  productIds: string[];
+  productIds?: string[];
+  items?: SaleItemInput[];
   paymentMethod: PaymentMethod | string;
   discount?: number;
   notes?: string;
@@ -14,8 +21,11 @@ export interface RegisterSaleRequest {
 
 export class SaleService {
   static async registerSale(ownerId: string, request: RegisterSaleRequest): Promise<Sale> {
-    if (!request.productIds || request.productIds.length === 0) {
-      throw new Error('Selecione pelo menos um produto para registrar a venda.');
+    const hasProducts = request.productIds && request.productIds.length > 0;
+    const hasItems = request.items && request.items.length > 0;
+
+    if (!hasProducts && !hasItems) {
+      throw new Error('Adicione pelo menos um item para registrar a venda.');
     }
 
     const saleId = `SALE_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -25,34 +35,56 @@ export class SaleService {
     let grossTotal = 0;
     const batch = db.batch();
 
-    for (const pid of request.productIds) {
-      const pRef = db.collection('products').doc(pid);
-      const pSnap = await pRef.get();
+    if (hasProducts) {
+      for (const pid of request.productIds!) {
+        const pRef = db.collection('products').doc(pid);
+        const pSnap = await pRef.get();
 
-      if (!pSnap.exists) {
-        throw new Error(`Produto ${pid} não encontrado.`);
+        if (!pSnap.exists) {
+          throw new Error(`Produto ${pid} não encontrado.`);
+        }
+
+        const product = pSnap.data()!;
+        if (product.ownerId !== ownerId) {
+          throw new Error(`Produto ${pid} não pertence a este usuário.`);
+        }
+        if (bazaarId !== 'default' && product.bazaarId !== bazaarId) {
+          throw new Error(`Produto ${pid} não pertence a este bazar.`);
+        }
+        if (product.isSold) {
+          throw new Error(`O produto "${product.name}" (${product.internalCode}) já foi vendido.`);
+        }
+
+        grossTotal += product.price;
+        saleItems.push({
+          productId: pid,
+          productName: product.name,
+          price: product.price,
+          category: product.category,
+          internalCode: product.internalCode,
+          imageUrl: product.imageUrl,
+        });
+
+        batch.update(pRef, {
+          isSold: true,
+          status: ProductStatus.VENDIDO,
+          updatedAt: Date.now(),
+        });
       }
+    }
 
-      const product = pSnap.data()!;
-      if (product.isSold) {
-        throw new Error(`O produto "${product.name}" (${product.internalCode}) já foi vendido.`);
+    if (hasItems) {
+      for (const item of request.items!) {
+        const itemCode = `AVULSO-${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        grossTotal += item.price;
+        saleItems.push({
+          productId: `CUSTOM_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          productName: item.name,
+          price: item.price,
+          category: item.category,
+          internalCode: itemCode,
+        });
       }
-
-      grossTotal += product.price;
-      saleItems.push({
-        productId: pid,
-        productName: product.name,
-        price: product.price,
-        category: product.category,
-        internalCode: product.internalCode,
-        imageUrl: product.imageUrl,
-      });
-
-      batch.update(pRef, {
-        isSold: true,
-        status: ProductStatus.VENDIDO,
-        updatedAt: Date.now(),
-      });
     }
 
     const discount = request.discount || 0;
@@ -92,8 +124,11 @@ export class SaleService {
     return saleData;
   }
 
-  static async getSaleHistory(ownerId: string, filter?: 'today' | 'week' | 'month' | 'year' | 'all'): Promise<Sale[]> {
+  static async getSaleHistory(ownerId: string, filter?: 'today' | 'week' | 'month' | 'year' | 'all', bazaarId?: string): Promise<Sale[]> {
     let query: admin.firestore.Query = db.collection('sales').where('ownerId', '==', ownerId);
+    if (bazaarId) {
+      query = query.where('bazaarId', '==', bazaarId);
+    }
 
     const now = new Date();
     let startTime = 0;

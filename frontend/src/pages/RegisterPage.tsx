@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Store, ArrowRight, AlertCircle, CheckCircle2, Upload, User } from 'lucide-react';
+import { Store, ArrowRight, AlertCircle, CheckCircle2, Upload, User, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { apiService } from '../services/api';
 
 export const RegisterPage: React.FC = () => {
@@ -17,6 +18,7 @@ export const RegisterPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const validateEmail = (emailStr: string): boolean => {
@@ -58,7 +60,6 @@ export const RegisterPage: React.FC = () => {
     try {
       let photoUrl = '';
       if (photoFile) {
-        // Upload temporary user avatar
         photoUrl = await apiService.uploadImage(photoFile, `temp_${Date.now()}`, 'avatars');
       }
 
@@ -75,34 +76,42 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-100 text-slate-900">
-      <div className="w-full max-w-md bg-white border border-slate-200 p-8 rounded-3xl shadow-xl space-y-6">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl shadow-xl space-y-6">
+        <div className="flex justify-end">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+          >
+            {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </button>
+        </div>
+
         <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-emerald-100 text-emerald-700 border border-emerald-200 mb-2">
+          <div className="inline-flex p-3 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 mb-2">
             <Store className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Criar Conta no Meu Bazar</h1>
-          <p className="text-sm text-slate-500">Cadastre-se para gerenciar seus bazares e vendas</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Criar Conta no Meu Bazar</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Cadastre-se para gerenciar seus bazares e vendas</p>
         </div>
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center space-x-2">
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm flex items-center space-x-2">
             <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-600" />
             <span>{successMsg}</span>
           </div>
         )}
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center space-x-2">
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm flex items-center space-x-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-500" />
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Optional Profile Photo Uploader */}
           <div className="flex flex-col items-center justify-center space-y-2 py-2">
-            <div className="relative w-20 h-20 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group">
+            <div className="relative w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden group">
               {photoPreview ? (
                 <img src={photoPreview} alt="Foto de perfil" className="w-full h-full object-cover" />
               ) : (
@@ -113,12 +122,12 @@ export const RegisterPage: React.FC = () => {
                 <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
               </label>
             </div>
-            <span className="text-xs text-slate-500 font-medium">Foto de Perfil (Opcional)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Foto de Perfil (Opcional)</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Nome *
               </label>
               <input
@@ -127,12 +136,12 @@ export const RegisterPage: React.FC = () => {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Maria"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-emerald-600"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Sobrenome *
               </label>
               <input
@@ -141,13 +150,13 @@ export const RegisterPage: React.FC = () => {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Silva"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-emerald-600"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-600"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               E-mail *
             </label>
             <input
@@ -156,12 +165,12 @@ export const RegisterPage: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="maria.silva@exemplo.com"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-emerald-600"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-600"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Senha *
             </label>
             <input
@@ -170,12 +179,12 @@ export const RegisterPage: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Mínimo 6 caracteres"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-emerald-600"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-600"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Confirmar Senha *
             </label>
             <input
@@ -184,7 +193,7 @@ export const RegisterPage: React.FC = () => {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repita a senha"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-emerald-600"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-600"
             />
           </div>
 
@@ -204,9 +213,9 @@ export const RegisterPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="text-center pt-4 border-t border-slate-200 text-sm text-slate-500">
+        <div className="text-center pt-4 border-t border-slate-200 dark:border-slate-800 text-sm text-slate-500 dark:text-slate-400">
           Já possui conta?{' '}
-          <Link to="/login" className="text-emerald-600 font-bold hover:underline">
+          <Link to="/login" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
             Fazer Login
           </Link>
         </div>

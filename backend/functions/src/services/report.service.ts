@@ -10,8 +10,12 @@ export interface ReportData {
 }
 
 export class ReportService {
-  static async getReportsData(ownerId: string): Promise<ReportData> {
-    const salesSnap = await db.collection('sales').where('ownerId', '==', ownerId).get();
+  static async getReportsData(ownerId: string, bazaarId?: string): Promise<ReportData> {
+    let query: FirebaseFirestore.Query = db.collection('sales').where('ownerId', '==', ownerId);
+    if (bazaarId) {
+      query = query.where('bazaarId', '==', bazaarId);
+    }
+    const salesSnap = await query.get();
     const sales: Sale[] = [];
     salesSnap.forEach((doc) => sales.push(doc.data() as Sale));
 
@@ -26,13 +30,11 @@ export class ReportService {
       s.items.forEach((item) => {
         totalQuantitySold += 1;
 
-        // Categories
         const cat = item.category || 'Outros';
         if (!categoryMap[cat]) categoryMap[cat] = { count: 0, revenue: 0 };
         categoryMap[cat].count += 1;
         categoryMap[cat].revenue += item.price;
 
-        // Products
         const code = item.internalCode || item.productName;
         if (!productMap[code]) productMap[code] = { name: item.productName, count: 0, revenue: 0 };
         productMap[code].count += 1;

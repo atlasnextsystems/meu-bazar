@@ -7,7 +7,7 @@ import { ReportService } from './services/report.service';
 import { UserService } from './services/user.service';
 import { BazaarService } from './services/bazaar.service';
 
-setGlobalOptions({ maxInstances: 10, region: 'us-central1' });
+setGlobalOptions({ maxInstances: 10, region: 'southamerica-east1' });
 
 const callOptions = { cors: true };
 
@@ -41,6 +41,9 @@ export const inviteMember = onCall(callOptions, async (request) => {
     throw new HttpsError('unauthenticated', 'User must be logged in.');
   }
   const { bazaarId, targetEmail, role } = request.data;
+  if (!bazaarId || !targetEmail || !role) {
+    throw new HttpsError('invalid-argument', 'bazaarId, targetEmail and role are required.');
+  }
   try {
     return await BazaarService.inviteMember(request.auth.uid, bazaarId, targetEmail, role);
   } catch (err: any) {
@@ -54,6 +57,9 @@ export const removeMember = onCall(callOptions, async (request) => {
     throw new HttpsError('unauthenticated', 'User must be logged in.');
   }
   const { bazaarId, targetMemberId } = request.data;
+  if (!bazaarId || !targetMemberId) {
+    throw new HttpsError('invalid-argument', 'bazaarId and targetMemberId are required.');
+  }
   try {
     await BazaarService.removeMember(request.auth.uid, bazaarId, targetMemberId);
     return { success: true };
@@ -68,6 +74,9 @@ export const updateBazaar = onCall(callOptions, async (request) => {
     throw new HttpsError('unauthenticated', 'User must be logged in.');
   }
   const { bazaarId, updates } = request.data;
+  if (!bazaarId || !updates) {
+    throw new HttpsError('invalid-argument', 'bazaarId and updates are required.');
+  }
   try {
     await BazaarService.updateBazaar(request.auth.uid, bazaarId, updates);
     return { success: true };
@@ -173,9 +182,9 @@ export const getSaleHistory = onCall(callOptions, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be logged in.');
   }
-  const { filter } = request.data || {};
+  const { filter, bazaarId } = request.data || {};
   try {
-    return await SaleService.getSaleHistory(request.auth.uid, filter);
+    return await SaleService.getSaleHistory(request.auth.uid, filter, bazaarId);
   } catch (err: any) {
     throw new HttpsError('internal', err.message || 'Failed to fetch sales history');
   }
@@ -186,8 +195,9 @@ export const getDashboardData = onCall(callOptions, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be logged in.');
   }
+  const { bazaarId } = request.data || {};
   try {
-    return await DashboardService.getDashboardData(request.auth.uid);
+    return await DashboardService.getDashboardData(request.auth.uid, bazaarId);
   } catch (err: any) {
     throw new HttpsError('internal', err.message || 'Failed to fetch dashboard metrics');
   }
@@ -198,8 +208,9 @@ export const getReportsData = onCall(callOptions, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be logged in.');
   }
+  const { bazaarId } = request.data || {};
   try {
-    return await ReportService.getReportsData(request.auth.uid);
+    return await ReportService.getReportsData(request.auth.uid, bazaarId);
   } catch (err: any) {
     throw new HttpsError('internal', err.message || 'Failed to fetch reports');
   }

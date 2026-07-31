@@ -3,9 +3,16 @@ import { Product } from '../domain/entities';
 import { ProductStatus } from '../domain/enums';
 
 export class ProductService {
-  private static generateInternalCode(): string {
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    return `MBZ-${randomNum}`;
+  private static async generateUniqueCode(): Promise<string> {
+    let code: string;
+    let exists = true;
+    while (exists) {
+      const randomNum = Math.floor(100000 + Math.random() * 900000);
+      code = `MBZ-${randomNum}`;
+      const snap = await db.collection('products').where('internalCode', '==', code).limit(1).get();
+      exists = !snap.empty;
+    }
+    return code!;
   }
 
   static async createProduct(ownerId: string, data: Omit<Product, 'id' | 'ownerId' | 'internalCode' | 'createdAt' | 'updatedAt' | 'isSold' | 'status'>): Promise<Product> {
@@ -16,7 +23,7 @@ export class ProductService {
       throw new Error('O preço deve ser maior que zero.');
     }
 
-    const internalCode = this.generateInternalCode();
+    const internalCode = await this.generateUniqueCode();
     const now = Date.now();
 
     const newProduct: Omit<Product, 'id'> = {
@@ -75,6 +82,9 @@ export class ProductService {
 
     if (!snap.exists) throw new Error('Produto não encontrado.');
 
+    const productData = snap.data() as Product;
+    if (productData.ownerId !== ownerId) throw new Error('Sem permissão para restaurar este produto.');
+
     await docRef.update({
       isSold: false,
       status: ProductStatus.DISPONIVEL,
@@ -87,6 +97,9 @@ export class ProductService {
     const snap = await docRef.get();
 
     if (!snap.exists) throw new Error('Produto não encontrado.');
+
+    const productData = snap.data() as Product;
+    if (productData.ownerId !== ownerId) throw new Error('Sem permissão para alterar este produto.');
 
     await docRef.update({
       isSold: true,

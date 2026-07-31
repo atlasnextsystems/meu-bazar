@@ -14,14 +14,38 @@ export interface CreateBazaarRequest {
 }
 
 export class BazaarService {
+  static validateCNPJ(cnpj: string): boolean {
+    const digits = cnpj.replace(/\D/g, '');
+    if (digits.length !== 14) return false;
+    if (/^(\d)\1{13}$/.test(digits)) return false;
+
+    const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += parseInt(digits[i]) * weights1[i];
+    let remainder = sum % 11;
+    const digit1 = remainder < 2 ? 0 : 11 - remainder;
+    if (parseInt(digits[12]) !== digit1) return false;
+
+    sum = 0;
+    for (let i = 0; i < 13; i++) sum += parseInt(digits[i]) * weights2[i];
+    remainder = sum % 11;
+    const digit2 = remainder < 2 ? 0 : 11 - remainder;
+    return parseInt(digits[13]) === digit2;
+  }
+
   static async createBazaar(ownerId: string, userEmail: string, request: CreateBazaarRequest): Promise<Bazaar> {
     if (!request.name || request.name.trim() === '') {
       throw new Error('Nome do bazar é obrigatório.');
     }
 
+    if (request.cnpj && request.cnpj.trim() !== '' && !this.validateCNPJ(request.cnpj)) {
+      throw new Error('CNPJ inválido. Verifique os dígitos.');
+    }
+
     const bazaarId = `BZ_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-    // Process SaaS Subscription Payment via PagSeguro Adapter (Mock or Prod)
     const paymentAdapter = PaymentProcessorFactory.getAdapter();
     const paymentResult = await paymentAdapter.processPayment({
       saleId: `SAAS_SUB_${bazaarId}`,
@@ -52,11 +76,9 @@ export class BazaarService {
 
     const batch = db.batch();
 
-    // 1. Create Bazaar Doc
     const bazaarRef = db.collection('bazaars').doc(bazaarId);
     batch.set(bazaarRef, bazaarData);
 
-    // 2. Add Owner Member Record
     const memberId = `${bazaarId}_${ownerId}`;
     const memberRef = db.collection('bazaar_members').doc(memberId);
     const memberData: BazaarMember = {
@@ -77,7 +99,6 @@ export class BazaarService {
   }
 
   static async getUserBazaars(userId: string, userEmail: string): Promise<Bazaar[]> {
-    // Fetch members matching userId or userEmail
     const memberSnap = await db
       .collection('bazaar_members')
       .where('userEmail', '==', userEmail)
@@ -89,7 +110,6 @@ export class BazaarService {
       if (data.bazaarId) bazaarIds.push(data.bazaarId);
     });
 
-    // Also fetch owned bazaars
     const ownedSnap = await db.collection('bazaars').where('ownerId', '==', userId).get();
     ownedSnap.forEach((doc: admin.firestore.QueryDocumentSnapshot) => {
       if (!bazaarIds.includes(doc.id)) bazaarIds.push(doc.id);
@@ -97,13 +117,16 @@ export class BazaarService {
 
     if (bazaarIds.length === 0) return [];
 
+    // Batch fetch all bazaars at once (fixes N+1)
+    const bazaarRefs = bazaarIds.map((id) => db.collection('bazaars').doc(id));
+    const bazaarSnaps = await db.getAll(...bazaarRefs);
+
     const bazaars: Bazaar[] = [];
-    for (const bId of bazaarIds) {
-      const bSnap = await db.collection('bazaars').doc(bId).get();
-      if (bSnap.exists) {
-        bazaars.push({ id: bSnap.id, ...bSnap.data() } as Bazaar);
+    bazaarSnaps.forEach((snap) => {
+      if (snap.exists) {
+        bazaars.push({ id: snap.id, ...snap.data() } as Bazaar);
       }
-    }
+    });
 
     return bazaars.sort((a, b) => b.createdAt - a.createdAt);
   }
@@ -114,7 +137,10 @@ export class BazaarService {
     targetEmail: string,
     role: UserRole
   ): Promise<BazaarMember> {
-    // Check if requester is OWNER
+    if (role !== UserRole.MANAGER && role !== UserRole.CASHIER) {
+      throw new Error('Cargo inválido. Apenas Gerente e Caixa podem ser convidados.');
+    }
+
     const memberId = `${bazaarId}_${requesterId}`;
     const reqSnap = await db.collection('bazaar_members').doc(memberId).get();
 
@@ -148,6 +174,11 @@ export class BazaarService {
       throw new Error('Apenas o Dono do Bazar pode remover membros.');
     }
 
+    const targetSnap = await db.collection('bazaar_members').doc(targetMemberId).get();
+    if (targetSnap.exists && (targetSnap.data() as BazaarMember).role === UserRole.OWNER) {
+      throw new Error('O Dono do Bazar não pode ser removido.');
+    }
+
     await db.collection('bazaar_members').doc(targetMemberId).delete();
   }
 
@@ -159,12 +190,19 @@ export class BazaarService {
       throw new Error('Apenas o Dono do Bazar pode alterar as configurações da loja.');
     }
 
+    if (updates.cnpj && updates.cnpj.trim() !== '' && !this.validateCNPJ(updates.cnpj)) {
+      throw new Error('CNPJ inválido. Verifique os dígitos.');
+    }
+
     const cleaned: Partial<Bazaar> = {
       ...updates,
       updatedAt: Date.now(),
     };
     delete cleaned.id;
     delete cleaned.ownerId;
+    delete cleaned.hasActiveSubscription;
+    delete cleaned.subscriptionPlan;
+    delete cleaned.createdAt;
 
     await db.collection('bazaars').doc(bazaarId).update(cleaned);
   }

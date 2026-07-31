@@ -3,26 +3,17 @@ import { User, Save, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import { ToastContainer } from '../components/ui/Toast';
-import type { ToastMessage } from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
 
 export const ProfilePage: React.FC = () => {
   const { user, userProfile, refreshProfile } = useAuth();
+  const { toasts, addToast, removeToast } = useToast();
 
   const [firstName, setFirstName] = useState(userProfile?.firstName || '');
   const [lastName, setLastName] = useState(userProfile?.lastName || '');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState(userProfile?.photoUrl || '');
   const [saving, setSaving] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const addToast = (type: 'success' | 'error' | 'info', title: string, description?: string) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, type, title, description }]);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -64,17 +55,17 @@ export const ProfilePage: React.FC = () => {
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
           Minha Conta Pessoal <User className="w-5 h-5 text-emerald-600" />
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Gerencie suas informações de conta e foto de perfil.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="glass-card p-6 space-y-6">
-        <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 pb-6 border-b border-slate-100">
-          <div className="relative w-24 h-24 rounded-full bg-slate-100 border-2 border-slate-200 overflow-hidden flex items-center justify-center group">
+        <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 pb-6 border-b border-slate-100 dark:border-slate-800">
+          <div className="relative w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center group">
             {photoPreview ? (
               <img src={photoPreview} alt="Perfil" className="w-full h-full object-cover" />
             ) : (
@@ -87,11 +78,11 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           <div className="text-center sm:text-left space-y-1">
-            <h3 className="font-bold text-slate-900 text-lg">
+            <h3 className="font-bold text-slate-900 dark:text-white text-lg">
               {firstName} {lastName}
             </h3>
-            <p className="text-xs text-slate-500 font-medium">{user?.email}</p>
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{user?.email}</p>
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
               Conta Pessoal Ativa
             </span>
           </div>
@@ -99,7 +90,7 @@ export const ProfilePage: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
               Nome *
             </label>
             <input
@@ -107,12 +98,12 @@ export const ProfilePage: React.FC = () => {
               required
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-emerald-600"
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-600"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
               Sobrenome *
             </label>
             <input
@@ -120,24 +111,24 @@ export const ProfilePage: React.FC = () => {
               required
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-emerald-600"
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-600"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
               E-mail da Conta (Não alterável)
             </label>
             <input
               type="email"
               disabled
               value={user?.email || ''}
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-sm cursor-not-allowed"
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 text-sm cursor-not-allowed"
             />
           </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-slate-100">
+        <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
           <button
             type="submit"
             disabled={saving}

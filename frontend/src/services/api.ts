@@ -21,9 +21,53 @@ const getSaleHistoryFn = httpsCallable(functions, 'getSaleHistory');
 const getDashboardDataFn = httpsCallable(functions, 'getDashboardData');
 const getReportsDataFn = httpsCallable(functions, 'getReportsData');
 
+export interface CreateBazaarData {
+  name: string;
+  cnpj?: string;
+  niche: string;
+  logoUrl?: string;
+  phone?: string;
+  address?: string;
+}
+
+export interface CreateProductData {
+  name: string;
+  category: string;
+  brand?: string;
+  size?: string;
+  color?: string;
+  condition: string;
+  price: number;
+  costPrice?: number;
+  description?: string;
+  imageUrl?: string;
+  bazaarId?: string;
+}
+
+export interface UpdateProductData {
+  name?: string;
+  category?: string;
+  brand?: string;
+  size?: string;
+  color?: string;
+  condition?: string;
+  price?: number;
+  costPrice?: number;
+  description?: string;
+  imageUrl?: string;
+}
+
+export interface RegisterSaleData {
+  bazaarId?: string;
+  productIds?: string[];
+  items?: { name: string; price: number; category: string }[];
+  paymentMethod: string;
+  discount?: number;
+  notes?: string;
+}
+
 export const apiService = {
-  // Multi-Bazaar & RBAC APIs
-  async createBazaar(data: { name: string; cnpj?: string; niche: string; logoUrl?: string; phone?: string; address?: string }): Promise<Bazaar> {
+  async createBazaar(data: CreateBazaarData): Promise<Bazaar> {
     const res = await createBazaarFn(data);
     return res.data as Bazaar;
   },
@@ -51,13 +95,12 @@ export const apiService = {
     return res.data as UserProfile;
   },
 
-  // Products & Sales
-  async createProduct(productData: any): Promise<Product> {
+  async createProduct(productData: CreateProductData): Promise<Product> {
     const res = await createProductFn(productData);
     return res.data as Product;
   },
 
-  async updateProduct(productId: string, updates: any): Promise<void> {
+  async updateProduct(productId: string, updates: UpdateProductData): Promise<void> {
     await updateProductFn({ productId, updates });
   },
 
@@ -73,23 +116,23 @@ export const apiService = {
     await markProductSoldFn({ productId });
   },
 
-  async registerSale(saleRequest: { bazaarId?: string; productIds: string[]; paymentMethod: string; discount?: number; notes?: string }): Promise<Sale> {
+  async registerSale(saleRequest: RegisterSaleData): Promise<Sale> {
     const res = await registerSaleFn(saleRequest);
     return res.data as Sale;
   },
 
-  async getSaleHistory(filter?: string): Promise<Sale[]> {
-    const res = await getSaleHistoryFn({ filter });
+  async getSaleHistory(filter?: string, bazaarId?: string): Promise<Sale[]> {
+    const res = await getSaleHistoryFn({ filter, bazaarId });
     return res.data as Sale[];
   },
 
-  async getDashboardData(): Promise<DashboardData> {
-    const res = await getDashboardDataFn();
+  async getDashboardData(bazaarId?: string): Promise<DashboardData> {
+    const res = await getDashboardDataFn({ bazaarId });
     return res.data as DashboardData;
   },
 
-  async getReportsData(): Promise<ReportData> {
-    const res = await getReportsDataFn();
+  async getReportsData(bazaarId?: string): Promise<ReportData> {
+    const res = await getReportsDataFn({ bazaarId });
     return res.data as ReportData;
   },
 
@@ -98,14 +141,13 @@ export const apiService = {
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
     const storageRef = ref(storage, `bazaars/${userId}/${folder}/${fileName}`);
     
-    // Explicitly pass contentType so Firebase Storage Security Rules recognize image MIME types
     const mimeType = file.type || `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
     await uploadBytes(storageRef, file, { contentType: mimeType });
     return await getDownloadURL(storageRef);
   },
 
-  subscribeProducts(userId: string, callback: (products: Product[]) => void) {
-    const q = query(collection(db, 'products'), where('ownerId', '==', userId));
+  subscribeProducts(bazaarId: string, callback: (products: Product[]) => void) {
+    const q = query(collection(db, 'products'), where('bazaarId', '==', bazaarId));
     return onSnapshot(q, (snapshot) => {
       const products: Product[] = [];
       snapshot.forEach((doc) => {

@@ -21,6 +21,7 @@ import {
   Cell,
 } from 'recharts';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import type { DashboardData } from '../types';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -28,13 +29,14 @@ import { Skeleton } from '../components/ui/Skeleton';
 const CATEGORY_COLORS = ['#10b981', '#06b6d4', '#6366f1', '#ec4899', '#f59e0b'];
 
 export const DashboardPage: React.FC = () => {
+  const { activeBazaar } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const res = await apiService.getDashboardData();
+      const res = await apiService.getDashboardData(activeBazaar?.id);
       setData(res);
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -45,7 +47,7 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [activeBazaar?.id]);
 
   return (
     <div className="space-y-6">
@@ -133,7 +135,7 @@ export const DashboardPage: React.FC = () => {
             <Skeleton className="h-8 w-3/4" />
           ) : (
             <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {data?.itemsInStockCount || 0} <span className="text-xs font-normal text-slate-500">peças</span>
+              {data?.itemsInStockCount || 0} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">peças</span>
             </div>
           )}
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Disponíveis</span>
@@ -150,7 +152,7 @@ export const DashboardPage: React.FC = () => {
             <Skeleton className="h-8 w-3/4" />
           ) : (
             <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {data?.productsSoldCount || 0} <span className="text-xs font-normal text-slate-500">itens</span>
+              {data?.productsSoldCount || 0} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">itens</span>
             </div>
           )}
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total histórico</span>

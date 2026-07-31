@@ -28,6 +28,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  authError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [userBazaars, setUserBazaars] = useState<Bazaar[]>([]);
   const [activeBazaar, setActiveBazaar] = useState<Bazaar | null>(null);
@@ -43,19 +45,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserDataAndBazaars = async (currentUser: User) => {
     try {
-      // 1. Profile
       const userRef = doc(db, 'users', currentUser.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         setUserProfile(userSnap.data() as UserProfile);
       }
 
-      // 2. Fetch Bazaars
       const bazaars = await apiService.getUserBazaars();
       setUserBazaars(bazaars);
 
       if (bazaars.length > 0) {
-        // Persist active bazaar choice or default to first
         const savedBazaarId = localStorage.getItem('mbz_active_bazaar_id');
         const selected = bazaars.find((b) => b.id === savedBazaarId) || bazaars[0];
         setActiveBazaar(selected);
@@ -63,8 +62,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setActiveBazaar(null);
       }
-    } catch (err) {
+      setAuthError(null);
+    } catch (err: any) {
       console.error('Error loading user data and bazaars:', err);
+      setAuthError(err.message || 'Erro ao carregar dados do usuário.');
     }
   };
 
@@ -97,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserProfile(null);
         setUserBazaars([]);
         setActiveBazaar(null);
+        setAuthError(null);
       }
       setLoading(false);
     });
@@ -186,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         resetPassword,
         refreshProfile,
+        authError,
       }}
     >
       {children}
